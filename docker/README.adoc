@@ -1,0 +1,1 @@
+code taken from https://github.com/bijukunjummen/docker-rabbitmq-cluster

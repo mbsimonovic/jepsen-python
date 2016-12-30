@@ -1,0 +1,52 @@
+version: '2'
+services:
+  node:
+    container_name: jepsen-node
+    build: ./docker
+    privileged: true
+
+  rabbit1:
+    extends: node
+    hostname: rabbit1
+    container_name: n1
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+  rabbit2:
+    extends: node
+    hostname: rabbit2
+    container_name: n2
+    environment: 
+     - CLUSTERED=true
+     - CLUSTER_WITH=rabbit1
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+  rabbit3:
+    extends: node
+    hostname: rabbit3
+    container_name: n3
+    environment: 
+     - CLUSTERED=true
+     - CLUSTER_WITH=rabbit1   
+    ports:
+      - "5674:5672"
+  rabbit4:
+    extends: node
+    hostname: rabbit4
+    container_name: n4
+    environment: 
+     - CLUSTERED=true
+     - CLUSTER_WITH=rabbit1
+    ports:
+      - "5675:5672"
+  rabbit5:
+    extends: node
+    hostname: rabbit5
+    container_name: n5
+    environment: 
+     - CLUSTERED=true
+     - CLUSTER_WITH=rabbit1
+    ports:
+      - "5676:5672"
+
