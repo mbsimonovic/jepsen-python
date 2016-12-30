@@ -47,6 +47,7 @@ add_policy(majority)
 nodes = node_names(0, num_rabbits)
 nemesis = Nemesis(nodes)
 
+logging.info('starting producers')
 rabbits = []
 for r in range(num_rabbits):
     rabbits.append(JepsenProducer(RABBIT_HOST, RABBIT_PORT + r, TOTAL_MSGS, MAX_PUBLISH_ATTEMPTS, MAX_RECONN_ATTEMPTS))
@@ -54,6 +55,7 @@ for r in rabbits:
     r.test()
 
 time.sleep(2)
+logging.info('releasing nemesis')
 for p in range(5):
     nemesis.partition([','.join(node_names(0, majority)), ','.join(node_names(majority, num_rabbits))])
     nemesis.status()
@@ -61,12 +63,16 @@ for p in range(5):
     nemesis.heal()
     nemesis.status()
     time.sleep(60)
+logging.info('restraining nemesis')
 
+logging.info('waiting for producers to finish')
 for r in rabbits:
     r.wait_for_test_to_complete()
+logging.info('producers done')
 
 time.sleep(60)
 
+logging.info('draining the queue')
 all_sent = []
 all_failed = []
 for r in rabbits:
@@ -76,4 +82,4 @@ logging.info('%i messages sent, %i failed', len(all_sent), len(all_failed))
 
 c = JepsenConsumer(RABBIT_HOST, RABBIT_PORT, all_sent, all_failed)
 c.wrapup()
-print('done')
+logging.info('test is finished')
