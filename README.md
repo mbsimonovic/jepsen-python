@@ -47,7 +47,6 @@ cd jepsen-python
 git submodule init && git submodule update
 (cd blockade && pip install -r requirements.txt)
 sudo docker-compose up
-# create queue & add policy
 
 ```
 
