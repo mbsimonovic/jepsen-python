@@ -54,7 +54,7 @@ sudo docker-compose up
 ## Running a test
 
 ```shell
-sudo python src/jepsen_test.py
+sudo python src/rabbitmq-test.py
 
 ```
 # Resources
