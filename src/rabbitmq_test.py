@@ -22,24 +22,40 @@ num_rabbits = int(sys.argv[1]) if len(sys.argv) > 1 else 5
 
 majority = num_rabbits // 2 + 1
 
+exactly_policy = '{"pattern":"^jepsen\.", "definition":{"ha-mode":"exactly", ' \
+             '"ha-params":%i,"ha-sync-mode":"automatic"}}' % majority
+
 
 def node_names(start_id, end_id):
     return ['n%i' % (n + 1) for n in range(start_id, end_id)]
 
 
-def add_policy(majority, username='guest', password='guest'):
+def add_policy(policy, username='guest', password='guest'):
     # we need to base 64 encode it
     # and then decode it to acsii as python 3 stores it as a byte string
     userAndPass = b64encode(b"%s:%s" % (username, password)).decode("ascii")
-    headers = {'Authorization': 'Basic %s' % userAndPass,
-               'Content-Type': 'application/json'
-               }
+    headers = {
+        'Authorization': 'Basic %s' % userAndPass,
+        'Content-Type': 'application/json'
+    }
 
-    policy_def = '{"pattern":"^jepsen\.", "definition":{"ha-mode":"exactly", ' \
-                 '"ha-params":%i,"ha-sync-mode":"automatic"}}' % majority
     connection = httplib.HTTPConnection(RABBIT_HOST, 15672)
-    connection.request('PUT', '/api/policies/%2f/jepsen-majority', policy_def, headers=headers)
+    policy_url = '/api/policies/%2f/jepsen-policy'
+    try:
+        connection.request('DELETE', policy_url, headers=headers)
+        result = connection.getresponse()
+        result.read() # need this for the following requests to work
+        if result.status < 300:
+            logging.debug('policy deleted')
+    except:
+        pass
+    connection.request('PUT', policy_url, policy, headers=headers)
     result = connection.getresponse()
+    result.read()
+    try:
+        connection.close()
+    except:
+        pass
     if result.status >= 300:
         raise Exception('failed to add policy: %i, %s'(result.status, result.reason))
 
@@ -50,8 +66,8 @@ def same_majority_partition_strategy(nodes):
     return [','.join(nodes[0:majority]), ','.join(nodes[majority:num_nodes])]
 
 
-def test(partition_strategy=same_majority_partition_strategy):
-    add_policy(majority)
+def test(partition_strategy=same_majority_partition_strategy, policy = exactly_policy):
+    add_policy(policy)
 
     nodes = node_names(0, num_rabbits)
     nemesis = Nemesis(nodes)
@@ -99,6 +115,7 @@ def test(partition_strategy=same_majority_partition_strategy):
     c = JepsenConsumer(RABBIT_HOST, RABBIT_PORT, all_sent, all_failed)
     c.wrapup()
     logging.info('test is finished')
+
 
 if __name__ == '__main__':
     test(same_majority_partition_strategy)
