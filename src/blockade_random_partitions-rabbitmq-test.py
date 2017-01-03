@@ -6,6 +6,7 @@ simulates blockade's --random partitioning.
 from rabbitmq_test import test
 import random
 
+
 def random_partition(containers):
     '''
     taken from https://github.com/dcm-oss/blockade/blob/master/blockade/core.py#L411
@@ -31,12 +32,14 @@ def random_partition(containers):
 
     return partitions
 
+
 def blockade_random_partition_strategy(nodes):
     for num_att in range(5):
-        partitions = [','.join(p) for p in random_partition(nodes)]
+        partitions = [','.join(p) for p in random_partition(nodes[:])]
         if len(partitions) > 0:
             return partitions
-    raise Exception("failed to create a partition")
+    raise Exception("failed to create a partition for %s" % str(nodes))
+
 
 if __name__ == '__main__':
     test(blockade_random_partition_strategy)

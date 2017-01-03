@@ -6,6 +6,7 @@ import httplib
 from base64 import b64encode
 
 from client import JepsenConsumer, JepsenProducer
+from blockade.errors import BlockadeError
 from nemesis import Nemesis
 
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] (%(threadName)-10s) %(message)s', )
@@ -43,7 +44,6 @@ def add_policy(majority, username='guest', password='guest'):
         raise Exception('failed to add policy: %i, %s'(result.status, result.reason))
 
 
-
 def same_majority_partition_strategy(nodes):
     num_nodes = len(nodes)
     majority = num_nodes // 2 + 1
@@ -67,13 +67,19 @@ def test(partition_strategy=same_majority_partition_strategy):
     time.sleep(2)
     logging.info('releasing nemesis')
     for p in range(NUM_NETWORK_PROBLEMS):
-        nemesis.partition(partition_strategy(nodes))
+        try:
+            partitions = partition_strategy(nodes)
+            nemesis.partition(partitions)
+        except BlockadeError as e:
+            logging.error('failed to create partition for %s', str(nodes))
+            logging.exception(e)
+
         nemesis.status()
         time.sleep(60)
         nemesis.heal()
         nemesis.status()
         time.sleep(60)
-    logging.info('restraining nemesis')
+    logging.info('chaining nemesis')
 
     logging.info('waiting for producers to finish')
     for r in rabbits:
