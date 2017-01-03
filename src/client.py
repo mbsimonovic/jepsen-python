@@ -89,6 +89,8 @@ class JepsenProducer(RabbitmqClient):
         self.max_send_attempts = max_send_attempts
         self.max_reconnect_attempts = max_reconnect_attempts
         self.thread = threading.Thread(name='rabbit %i' % rabbit_port, target=self._test)
+        # to stop producer as soon as the main thread exists:
+        self.thread.setDaemon(True)
 
     def test(self):
         logging.info('starting producer')
