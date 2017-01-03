@@ -53,7 +53,7 @@ sudo docker-compose up
 ## Running a test
 
 ```shell
-sudo python src/rabbitmq-test.py
+sudo python src/rabbitmq_test.py
 
 ```
 # Resources
