@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO, format='[%(levelname)s] (%(threadName)-1
 RABBIT_HOST = '192.168.54.136'
 RABBIT_PORT = 5672
 TOTAL_MSGS = 5000
-MAX_RECONN_ATTEMPTS = 100
+MAX_RECONN_ATTEMPTS = 20
 MAX_PUBLISH_ATTEMPTS = 10
 NUM_NETWORK_PROBLEMS = 5
 
@@ -65,8 +65,11 @@ def same_majority_partition_strategy(nodes):
     majority = num_nodes // 2 + 1
     return [','.join(nodes[0:majority]), ','.join(nodes[majority:num_nodes])]
 
+def heal_strategy(nemesis):
+    nemesis.heal()
+    nemesis.status()
 
-def test(partition_strategy=same_majority_partition_strategy, policy = exactly_policy):
+def test(partition_strategy=same_majority_partition_strategy, policy = exactly_policy, heal_strategy=heal_strategy):
     add_policy(policy)
 
     nodes = node_names(0, num_rabbits)
@@ -86,16 +89,17 @@ def test(partition_strategy=same_majority_partition_strategy, policy = exactly_p
         try:
             partitions = partition_strategy(nodes)
             nemesis.partition(partitions)
+            nemesis.status()
+            time.sleep(60)
         except BlockadeError as e:
             logging.error('failed to create partition for %s', str(nodes))
             logging.exception(e)
 
-        nemesis.status()
+        heal_strategy(nemesis)
         time.sleep(60)
-        nemesis.heal()
-        nemesis.status()
-        time.sleep(60)
+
     logging.info('chaining nemesis')
+    nemesis.heal()
 
     logging.info('waiting for producers to finish')
     for r in rabbits:
