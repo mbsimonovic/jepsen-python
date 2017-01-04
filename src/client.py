@@ -139,7 +139,8 @@ class JepsenProducer(RabbitmqClient):
                             # time.sleep(1)
                     else:  # failed to re-open
                         self.failed.append(i)
-                        logging.error('failed to send %i, cannot connect to rabbit, stopping the test' % msg, c)
+                        logging.error('failed to send %s, cannot connect to rabbit, stopping the test' % msg)
+                        logging.exception(c)
                         return
                 except exceptions.KeyboardInterrupt as ke:
                     logging.warning('keyboard exception, stopping msg publishing')
