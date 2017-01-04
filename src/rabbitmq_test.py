@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO, format='[%(levelname)s] (%(threadName)-1
 RABBIT_HOST = '192.168.54.136'
 RABBIT_PORT = 5672
 TOTAL_MSGS = 5000
-MAX_RECONN_ATTEMPTS = 20
+MAX_RECONN_ATTEMPTS = 50
 MAX_PUBLISH_ATTEMPTS = 10
 NUM_NETWORK_PROBLEMS = 5
 
