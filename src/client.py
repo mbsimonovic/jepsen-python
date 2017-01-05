@@ -125,6 +125,8 @@ class JepsenProducer(RabbitmqClient):
                 try:
                     self.enqueue(str(msg))
                     self.sent.append(msg)
+                    if len(self.sent) % 1000 == 0:
+                        logging.info('sent %ith message' % len(self.sent))
                     time.sleep(0.1)
                     break
                     # (320, "CONNECTION_FORCED - broker forced connection closure with reason 'shutdown'")
