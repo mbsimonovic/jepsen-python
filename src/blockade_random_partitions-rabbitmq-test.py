@@ -5,6 +5,8 @@ simulates blockade's --random partitioning.
 
 from rabbitmq_test import test
 import random
+from blockade.errors import BlockadeError
+import logging
 
 
 def random_partition(containers):
@@ -33,12 +35,19 @@ def random_partition(containers):
     return partitions
 
 
-def blockade_random_partition_strategy(nodes):
+def blockade_random_partition_strategy(nodes, nemesis):
     for num_att in range(5):
         partitions = [','.join(p) for p in random_partition(nodes[:])]
         if len(partitions) > 0:
-            return partitions
-    raise Exception("failed to create a partition for %s" % str(nodes))
+            break
+    if not partitions:
+        raise Exception("failed to create a partition for %s" % str(nodes))
+    try:
+        nemesis.partition(partitions)
+        nemesis.status()
+    except BlockadeError as e:
+        logging.error('failed to create partition for %s', str(nodes))
+        logging.exception(e)
 
 
 if __name__ == '__main__':

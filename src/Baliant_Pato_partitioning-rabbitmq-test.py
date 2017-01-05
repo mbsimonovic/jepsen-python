@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from rabbitmq_test import test
+from blockade.errors import BlockadeError
+import logging
 
 ha_all_policy = '{"pattern":"^jepsen\.", "definition":{"ha-mode":"all", ' \
                 '"ha-sync-mode":"automatic"}}'
@@ -51,15 +53,22 @@ def Baliant_Pato_partitioning_generator(nodes):
 
 
 partitions_generator = None
-def Baliant_Pato_partitioning(nodes):
+def Baliant_Pato_partitioning(nodes, nemesis):
     if (len(nodes) != 3):
-        return ','.join(nodes)
+        raise Exception('this scheme can only work with 3 nodes!')
 
     global partitions_generator
     if not partitions_generator:
         partitions_generator = Baliant_Pato_partitioning_generator(nodes)
-    return next(partitions_generator)
+
+    partitions = next(partitions_generator)
+    try:
+        nemesis.partition(partitions)
+        nemesis.status()
+    except BlockadeError as e:
+        logging.error('failed to create partition for %s', str(nodes))
+        logging.exception(e)
 
 
 if __name__ == '__main__':
-    test(Baliant_Pato_partitioning, policy=ha_all_policy, heal_strategy=lambda x: None)
+    test(partition_strategy=Baliant_Pato_partitioning, policy=ha_all_policy, heal_strategy=lambda x: None)

@@ -60,21 +60,22 @@ def add_policy(policy, username='guest', password='guest'):
         raise Exception('failed to add policy: %i, %s'(result.status, result.reason))
 
 
-def same_majority_partition_strategy(nodes):
+def same_majority_partition_strategy(nodes, nemesis):
     num_nodes = len(nodes)
     majority = num_nodes // 2 + 1
-    return [','.join(nodes[0:majority]), ','.join(nodes[majority:num_nodes])]
+    partitions = [','.join(nodes[0:majority]), ','.join(nodes[majority:num_nodes])]
+    try:
+        nemesis.partition(partitions)
+        nemesis.status()
+    except BlockadeError as e:
+        logging.error('failed to create partition for %s', str(nodes))
+        logging.exception(e)
 
 def heal_strategy(nemesis):
     nemesis.heal()
     nemesis.status()
 
-def test(partition_strategy=same_majority_partition_strategy, policy = exactly_policy, heal_strategy=heal_strategy):
-    add_policy(policy)
-
-    nodes = node_names(0, num_rabbits)
-    nemesis = Nemesis(nodes)
-
+def start_producers(num_rabbits):
     logging.info('starting producers')
     rabbits = []
     for r in range(num_rabbits):
@@ -82,44 +83,50 @@ def test(partition_strategy=same_majority_partition_strategy, policy = exactly_p
             JepsenProducer(RABBIT_HOST, RABBIT_PORT + r, TOTAL_MSGS, MAX_PUBLISH_ATTEMPTS, MAX_RECONN_ATTEMPTS))
     for r in rabbits:
         r.test()
-
     time.sleep(2)
-    logging.info('releasing nemesis')
-    for p in range(NUM_NETWORK_PROBLEMS):
-        try:
-            partitions = partition_strategy(nodes)
-            nemesis.partition(partitions)
-            nemesis.status()
-            time.sleep(60)
-        except BlockadeError as e:
-            logging.error('failed to create partition for %s', str(nodes))
-            logging.exception(e)
+    return rabbits
 
-        heal_strategy(nemesis)
-        time.sleep(60)
 
-    logging.info('chaining nemesis')
-    nemesis.heal()
-
-    logging.info('waiting for producers to finish')
-    for r in rabbits:
-        r.wait_for_test_to_complete()
-    logging.info('producers done')
-
-    time.sleep(60)
-
-    logging.info('draining the queue')
+def collect_results(rabbits):
     all_sent = []
     all_failed = []
     for r in rabbits:
         all_sent.extend(r.sent)
         all_failed.extend(r.failed)
     logging.info('%i messages sent, %i failed', len(all_sent), len(all_failed))
-
+    logging.info('draining the queue')
     c = JepsenConsumer(RABBIT_HOST, RABBIT_PORT, all_sent, all_failed)
     c.wrapup()
     logging.info('test is finished')
 
 
+def wait_for_producers(rabbits):
+    logging.info('waiting for producers to finish')
+    for r in rabbits:
+        r.wait_for_test_to_complete()
+    logging.info('producers done')
+    time.sleep(60)
+
+
+def run_nemesis(nodes, partition_strategy, heal_strategy):
+    logging.info('releasing nemesis')
+    nemesis = Nemesis(nodes)
+    for p in range(NUM_NETWORK_PROBLEMS):
+        partition_strategy(nodes, nemesis)
+        time.sleep(60)
+        heal_strategy(nemesis)
+        time.sleep(60)
+    logging.info('chaining nemesis')
+    nemesis.heal()
+
+def test(partition_strategy=same_majority_partition_strategy, policy = exactly_policy, heal_strategy=heal_strategy):
+    nodes = node_names(0, num_rabbits)
+    add_policy(policy)
+    rabbits = start_producers(num_rabbits)
+    run_nemesis(nodes, partition_strategy, heal_strategy)
+    wait_for_producers(rabbits)
+    collect_results(rabbits)
+
+
 if __name__ == '__main__':
-    test(same_majority_partition_strategy)
+    test()
